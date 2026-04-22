@@ -1,213 +1,59 @@
-# InterviewIntel
+# InterviewIntel — AI Interview Intelligence Platform
 
-> Real interview experiences from Reddit, Glassdoor & Blind — aggregated, structured, and summarized by AI.
+![Next.js](https://img.shields.io/badge/Next.js-14-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Cache-336791)
+![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-orange)
 
-Solves the problem of candidates spending hours hunting scattered interview experiences across multiple platforms.
-Enter a company + role → get structured intel: rounds, questions, comp, tips.
+InterviewIntel aggregates real interview experiences from across the web and structures them into actionable intel — rounds, compensation, topic breakdown, community questions, practice questions, and prep tips. Enter a company + role, get everything you need to walk in prepared.
 
----
+## Features
 
-## Architecture
+- **Interview Round Breakdown** — Exact round structure reported by real candidates
+- **Compensation Data** — Realistic salary ranges (INR LPA / USD), always verify on Levels.fyi
+- **Topic Frequency Chart** — Visual breakdown of what the company actually tests
+- **Questions from the Community** — Actual questions candidates reported from Reddit, LeetCode, Naukri, GFG
+- **Practice Questions** — AI-generated topic-wise questions based on what this company typically asks
+- **Insider Prep Tips** — Company-specific, not generic advice
+- **Live Hiring Signal** — Apply CTA with direct careers page link when actively hiring
+- **Two-Layer Caching** — In-memory (1hr TTL) + PostgreSQL (7-day TTL) to eliminate redundant API calls
+- **Query Normalization** — "Amex" and "American Express" resolve to the same cache entry
 
-```
-User Query ("Amex SDE 1")
-        ↓
-Next.js Frontend  →  /api/search (Next.js API Route — API key stays server-side)
-        ↓
-Spring Boot Backend  →  QueryNormalizer ("Amex" → "American Express", "SDE1" → "Software Engineer 1")
-        ↓
-Redis Cache (hot) → PostgreSQL Cache (warm) → Miss: fetch from DB
-        ↓
-InterviewPostRepository  (PostgreSQL — real Reddit posts stored here)
-        ↓
-ClaudeSummarizationService  (grounded prompt — only summarizes what's in the posts)
-        ↓
-Structured JSON response  →  Frontend cards
-        ↓
-Background: RedditIngestionService (async, triggered when data is sparse)
-```
+## Tech Stack
 
----
+- **Frontend**: Next.js 14, TypeScript, Tailwind CSS, Recharts
+- **AI**: Google Gemini — fallback chain: `gemini-2.5-flash → gemini-2.0-flash → gemini-2.0-flash-lite`
+- **Data**: SerpAPI (Google search across LeetCode, Reddit, Naukri, GFG) + Reddit JSON API fallback
+- **Cache**: PostgreSQL (Railway) + in-memory Map
+- **Hosting**: Vercel (frontend) + Railway (PostgreSQL)
 
-## Quick Start (MVP — Frontend Only)
-
-The fastest way to get running. Uses Claude API directly from the Next.js server.
-No Spring Boot, no PostgreSQL, no Redis needed.
+## Running Locally
 
 ```bash
 cd frontend
 cp .env.example .env.local
-# Fill in CLAUDE_API_KEY in .env.local
+# Fill in GEMINI_API_KEY, SERP_API_KEY, DATABASE_URL in .env.local
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000. Done.
+Open http://localhost:3000.
 
----
+## Environment Variables
 
-## Full Stack (Production-Grade)
-
-Runs Spring Boot + PostgreSQL + Redis + Next.js together via Docker Compose.
-
-### Step 1: Get your API keys
-
-**Claude API Key**
-1. Go to https://console.anthropic.com/
-2. Settings → API Keys → Create Key
-3. Copy the key — it starts with `sk-ant-`
-
-**Reddit API Credentials**
-1. Go to https://www.reddit.com/prefs/apps
-2. Click "create another app"
-3. Choose type: **script**
-4. Name: InterviewIntel
-5. Redirect URI: http://localhost (doesn't matter for script type)
-6. Copy the **client ID** (under app name) and **client secret**
-
-### Step 2: Configure environment
-
-```bash
-cp .env.example .env
-# Edit .env and fill in:
-#   CLAUDE_API_KEY
-#   REDDIT_CLIENT_ID
-#   REDDIT_CLIENT_SECRET
-```
-
-### Step 3: Run with Docker Compose
-
-```bash
-docker-compose up --build
-```
-
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
-- Health check: http://localhost:8080/api/v1/health
-
----
-
-## API Reference
-
-### Search
-```
-GET /api/v1/search?company=Amex&role=SDE1&location=IN
-```
-
-Returns full interview intelligence. Normalizes "Amex" → "American Express", "SDE1" → "Software Engineer 1".
-Results are cached in Redis (6h) and PostgreSQL (7 days).
-
-### Trigger Ingestion
-```
-POST /api/v1/ingest
-Body: { "company": "Qualcomm", "role": "SDE 1", "location": "IN" }
-```
-
-Fires off async Reddit ingestion in the background. Check back after ~30 seconds.
-
-### Normalize (debug)
-```
-GET /api/v1/normalize?company=Amex&role=SDE1
-```
-
-Returns the normalized company/role strings — useful to verify aliases are working.
-
-### Autocomplete
-```
-GET /api/v1/autocomplete/companies
-GET /api/v1/autocomplete/roles?company=American Express
-```
-
----
-
-## Project Structure
-
-```
-interviewintel/
-├── frontend/                          # Next.js app
-│   └── src/
-│       ├── app/
-│       │   ├── page.tsx               # Main search page
-│       │   ├── layout.tsx
-│       │   ├── globals.css
-│       │   └── api/search/route.ts    # Server-side API route (API key lives here)
-│       ├── components/
-│       │   ├── SearchBar.tsx
-│       │   ├── ResultsPanel.tsx
-│       │   └── cards/                 # OverviewCard, CompensationCard, QuestionsCard, etc.
-│       └── types/index.ts
-│
-├── backend/                           # Spring Boot app
-│   └── src/main/java/com/interviewintel/
-│       ├── controller/
-│       │   └── InterviewController.java    # REST endpoints
-│       ├── service/
-│       │   ├── SearchService.java          # Orchestrates the full search flow
-│       │   ├── ClaudeSummarizationService  # LLM summarization with grounded prompts
-│       │   └── QueryNormalizer.java        # "Amex" → "American Express"
-│       ├── ingestion/
-│       │   └── RedditIngestionService.java # Fetches & stores Reddit posts
-│       ├── repository/
-│       │   ├── InterviewPostRepository.java
-│       │   └── SearchResultRepository.java
-│       ├── model/
-│       │   ├── InterviewPost.java          # Stores raw scraped posts
-│       │   └── SearchResult.java          # Stores cached LLM results
-│       └── dto/Dtos.java                  # All request/response shapes
-│
-├── docker-compose.yml                 # Full stack local dev
-├── .env.example                       # Template for environment variables
-└── README.md
-```
-
----
+| Variable | Where to get it |
+|---|---|
+| `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) — free |
+| `SERP_API_KEY` | [serpapi.com](https://serpapi.com) — 100 free searches/month |
+| `DATABASE_URL` | Railway → New Project → PostgreSQL → copy connection string |
 
 ## Deployment
 
-### Frontend → Vercel (free tier works)
-```bash
-cd frontend
-# Push to GitHub, then connect repo in vercel.com
-# Add environment variable: CLAUDE_API_KEY in Vercel dashboard
-```
+- **Frontend**: Vercel — set Root Directory to `frontend`, add all three env vars
+- **Database**: Railway → New Project → PostgreSQL → copy `DATABASE_URL` → add to Vercel env vars
 
-### Backend → Railway.app (free tier works)
-```bash
-# Push to GitHub
-# Create new Railway project → Deploy from GitHub → select /backend
-# Add environment variables in Railway dashboard
-# Railway auto-detects the Dockerfile
-```
+The `search_cache` table auto-creates on first search — no migrations needed.
 
-### Database → Railway PostgreSQL
-```bash
-# In Railway: New Service → PostgreSQL
-# Copy DATABASE_URL from Railway → add to backend env vars
-```
+## License
 
----
-
-## How to Talk About This in Interviews
-
-**"What does this project do?"**
-"It solves a real problem I personally faced — interview experiences are scattered across Reddit, Glassdoor, and Blind. I built a retrieval-based system that ingests posts via the Reddit API, stores and deduplicates them in PostgreSQL, and uses an LLM (Claude) to produce a structured summary. The key engineering decisions were: grounded prompting to prevent hallucination, a two-layer cache (Redis + PostgreSQL) for performance, and a normalization layer so 'Amex' and 'American Express' hit the same data."
-
-**"Why not just call the LLM directly?"**
-"Pure LLM answers hallucinate compensation and question data. My approach feeds real posts from the DB into the prompt — the LLM is a summarizer, not an inventor. Each response cites which posts it used."
-
-**"What's your caching strategy?"**
-"Two-layer: Redis for hot queries (sub-millisecond, 6h TTL), PostgreSQL for warm cache (7-day TTL). On a cache miss, I fetch posts from the DB, run Claude, and backfill both caches asynchronously."
-
-**"How do you handle data quality?"**
-"Every ingested post gets a quality score (0-100) based on upvotes, comment count, body length, and awards. The retrieval query filters by a minimum quality threshold and ranks by score. Short, low-karma posts get filtered out."
-
----
-
-## Anti-Hallucination Design
-
-The Claude prompt explicitly says:
-- "ONLY use information present in the posts below. DO NOT hallucinate."
-- "If compensation is not mentioned, return null."
-- "If there are only 2-3 posts, say 'limited data' in the overview."
-
-This is what separates this from a toy — the LLM is grounded in real data, not generating from memory.
+Copyright © 2026 Anirudh S. Distributed under the MIT License. See [LICENSE](./LICENSE) for more information.
