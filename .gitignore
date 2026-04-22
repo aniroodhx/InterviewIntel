@@ -1,0 +1,28 @@
+# Environment files — never commit these
+.env
+.env.local
+.env.*.local
+
+# Java / Maven
+backend/target/
+*.class
+*.jar
+*.war
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
