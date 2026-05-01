@@ -125,6 +125,8 @@ export async function POST(req: NextRequest) {
     goog: "Google", googl: "Google",
     fb: "Meta", facebook: "Meta",
     amzn: "Amazon", aws: "Amazon Web Services",
+    amajaan: "Amazon", amazan: "Amazon", amazom: "Amazon",
+    joho: "Zoho",
     qcom: "Qualcomm", nvda: "Nvidia", intc: "Intel",
     jpm: "JPMorgan Chase",
     tcs: "Tata Consultancy Services",
@@ -135,6 +137,7 @@ export async function POST(req: NextRequest) {
     sde2: "Software Engineer 2", "sde 2": "Software Engineer 2",
     swe: "Software Engineer", swe1: "Software Engineer 1",
     mle: "Machine Learning Engineer",
+    se: "Software Engineer",
     sdet: "Software Development Engineer in Test",
   };
 
